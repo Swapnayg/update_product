@@ -36,6 +36,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   image_picker: any
   provider: any
+  http: ^0.13.3
+
+
 
 
 
