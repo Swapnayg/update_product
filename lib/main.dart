@@ -1,14 +1,20 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'dart:collection';
 import 'package:update_product/app_color.dart';
+import 'package:update_product/category.dart';
+import 'package:update_product/colorway.dart';
+import 'package:update_product/brand.dart';
+import 'package:update_product/size.dart';
 
 void main() {
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
+
   runApp(
     MyApp(),
   );
@@ -30,7 +36,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  MyHomePage({Key? key, required this.title}) : super(key: key);
 
   final String title;
 
@@ -38,12 +44,17 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
+final List<Category_P> categoryData = [];
+final List<Brand_p> brandData = [];
+final List<Size_P> sizeData = [];
+final List<Colorway> colorData = [];
+
 List<File> selectedImages = [];
 final picker = ImagePicker();
 
-String dropdownvalue = 'Item 1';
+int dropdownvalue = 0;
 
-String brandValue = 'brand 1';
+int brandValue = 0;
 
 int? _currentSelectedIndex;
 HashSet selectItems = HashSet();
@@ -70,6 +81,10 @@ var arry_sizes = [];
 var arry_colors = [];
 
 class _MyHomePageState extends State<MyHomePage> {
+  initState() {
+    readJson();
+  }
+
   final TextStyle textstyle =
       TextStyle(color: Colors.white, fontWeight: FontWeight.bold);
   final InputDecoration decoration = InputDecoration(
@@ -81,7 +96,6 @@ class _MyHomePageState extends State<MyHomePage> {
     int sizeIndex = 0;
     int selSizeIndex = 0;
     Color color = Colors.blue;
-
     final double itemHeight = (size.height - kToolbarHeight - 24) / 2;
     final double itemWidth = size.width / 2;
     return Scaffold(
@@ -114,13 +128,18 @@ class _MyHomePageState extends State<MyHomePage> {
                           child: DropdownButton(
                               value: dropdownvalue,
                               icon: const Icon(Icons.keyboard_arrow_down),
-                              items: items.map((String items) {
+                              items: categoryData
+                                  .asMap()
+                                  .keys
+                                  .toList()
+                                  .map((index) {
                                 return DropdownMenuItem(
-                                  value: items,
-                                  child: Text(items),
+                                  child:
+                                      Text(categoryData[index].name.toString()),
+                                  value: index,
                                 );
                               }).toList(),
-                              onChanged: (String? newValue) {
+                              onChanged: (int? newValue) {
                                 setState(() {
                                   dropdownvalue = newValue!;
                                 });
@@ -136,13 +155,14 @@ class _MyHomePageState extends State<MyHomePage> {
                           child: DropdownButton(
                               value: brandValue,
                               icon: const Icon(Icons.keyboard_arrow_down),
-                              items: brands.map((String items) {
+                              items:
+                                  brandData.asMap().keys.toList().map((index) {
                                 return DropdownMenuItem(
-                                  value: items,
-                                  child: Text(items),
+                                  child: Text(brandData[index].name.toString()),
+                                  value: index,
                                 );
                               }).toList(),
-                              onChanged: (String? newValue) {
+                              onChanged: (int? newValue) {
                                 setState(() {
                                   brandValue = newValue!;
                                 });
@@ -168,15 +188,15 @@ class _MyHomePageState extends State<MyHomePage> {
                                 childAspectRatio: 1,
                                 children: [
                                   for (int j = 0;
-                                      j < arry_colors.length;
+                                      j < colorData.length;
                                       j++) ...[
                                     GridTile(
                                       child: InkWell(
                                         onTap: () {
                                           setState(() {
-                                            arry_colors[j]["selected"] =
-                                                !bool.parse(arry_colors[j]
-                                                        ["selected"]
+                                            colorData[j].selected = !bool.parse(
+                                                colorData[j]
+                                                    .selected
                                                     .toString());
 
                                             isMultiSelectionEnabled = true;
@@ -185,9 +205,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                         },
                                         onLongPress: () {
                                           setState(() {
-                                            arry_colors[j]["selected"] =
-                                                !bool.parse(arry_colors[j]
-                                                        ["selected"]
+                                            colorData[j].selected = !bool.parse(
+                                                colorData[j]
+                                                    .selected
                                                     .toString());
 
                                             isMultiSelectionEnabled = true;
@@ -199,11 +219,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                             decoration: BoxDecoration(
                                                 borderRadius:
                                                     BorderRadius.circular(15),
-                                                color: HexColor(arry_colors[j]
-                                                        ["color_code"]
-                                                    .toString()
-                                                    .replaceAll(
-                                                        RegExp('#'), ''))),
+                                                color: colorData[j].color),
                                             child: Stack(
                                               children: [
                                                 Column(
@@ -211,19 +227,13 @@ class _MyHomePageState extends State<MyHomePage> {
                                                       MainAxisSize.min,
                                                   children: [
                                                     Text(
-                                                      arry_colors[j]
-                                                                  ["color_code"]
-                                                              .toString() +
-                                                          " " +
-                                                          arry_colors[j]
-                                                                  ["color_name"]
-                                                              .toString(),
+                                                      "${colorData[j].name}",
                                                       textAlign:
                                                           TextAlign.center,
                                                       style: TextStyle(
                                                           fontSize: 6.0,
-                                                          color: arry_colors[j][
-                                                                          "color_name"]
+                                                          color: colorData[j]
+                                                                      .name
                                                                       .toString() ==
                                                                   "Black"
                                                               ? Colors.white
@@ -235,8 +245,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                                 ),
                                                 Visibility(
                                                     visible: bool.parse(
-                                                        arry_colors[j]
-                                                                ["selected"]
+                                                        colorData[j]
+                                                            .selected
                                                             .toString()),
                                                     child: const Align(
                                                       alignment:
@@ -272,14 +282,14 @@ class _MyHomePageState extends State<MyHomePage> {
                             shrinkWrap: true,
                             scrollDirection: Axis.vertical,
                             children: [
-                              for (int i = 0; i < arry_sizes.length; i++) ...[
+                              for (int i = 0; i < sizeData.length; i++) ...[
                                 GridTile(
                                     child: InkWell(
                                         onTap: () {
                                           setState(() {
-                                            arry_sizes[i]["selected"] =
-                                                !bool.parse(arry_sizes[i]
-                                                        ["selected"]
+                                            sizeData[i].selected = !bool.parse(
+                                                sizeData[i]
+                                                    .selected
                                                     .toString());
                                             isSizeMultiEnabled = true;
                                             doSizeMultiSelection(i);
@@ -287,9 +297,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                         },
                                         onLongPress: () {
                                           setState(() {
-                                            arry_sizes[i]["selected"] =
-                                                !bool.parse(arry_sizes[i]
-                                                        ["selected"]
+                                            sizeData[i].selected = !bool.parse(
+                                                sizeData[i]
+                                                    .selected
                                                     .toString());
                                             isSizeMultiEnabled = true;
                                             doSizeMultiSelection(i);
@@ -300,14 +310,15 @@ class _MyHomePageState extends State<MyHomePage> {
                                               onHover: _updateLocation,
                                               child: CircleAvatar(
                                                   backgroundColor: bool.parse(
-                                                          arry_sizes[i]
-                                                                  ["selected"]
+                                                          sizeData[i]
+                                                              .selected
                                                               .toString())
                                                       ? AppColor.secondary
                                                       : Colors.grey,
                                                   radius: 20,
                                                   child: Text(
-                                                    arry_sizes[i]["size_no"]
+                                                    sizeData[i]
+                                                        .number
                                                         .toString(),
                                                     style: TextStyle(
                                                         fontSize: 12.0,
@@ -389,6 +400,59 @@ class _MyHomePageState extends State<MyHomePage> {
         ));
   }
 
+  Future<void> readJson() async {
+    var response = await http.get(Uri.parse(
+        "https://script.google.com/macros/s/AKfycbz4VKVP6XkHw_jdCkZtFGIMwNqtIZkfwB_CQO4-VXrYtJMgYunE24aaDqglVVA74jxL/exec"));
+
+    dynamic jsonAppData = jsonDecode(response.body);
+    dynamic cateData1 = jsonDecode(jsonAppData[0]["category"]);
+    dynamic brandData1 = jsonDecode(jsonAppData[0]["brand"]);
+    dynamic sizeData1 = jsonDecode(jsonAppData[0]["size"]);
+    dynamic colorData1 = jsonDecode(jsonAppData[0]["color"]);
+
+    print(sizeData1);
+    setState(() {
+      for (var i = 0; i < cateData1.length; i++) {
+        Category_P catData = Category_P(
+          name: cateData1[i]['name'],
+          iconUrl: cateData1[i]['icon_url'],
+          featured:
+              bool.parse(cateData1[i]['featured'].toString().toLowerCase()),
+        );
+
+        categoryData.add(catData);
+      }
+      for (var i = 0; i < brandData1.length; i++) {
+        Brand_p brData = Brand_p(
+          name: brandData1[i]['name'].toString(),
+          logourl: brandData1[i]['logourl'].toString(),
+          password: brandData1[i]['password'].toString(),
+        );
+
+        brandData.add(brData);
+      }
+      for (var i = 0; i < sizeData1.length; i++) {
+        Size_P sData = Size_P(
+          name: sizeData1[i]['name'].toString(),
+          number: sizeData1[i]['number'].toString(),
+          selected: false,
+        );
+        sizeData.add(sData);
+      }
+      print(sizeData);
+      for (var i = 0; i < colorData1.length; i++) {
+        Colorway colData = Colorway(
+          name: colorData1[i]['name'],
+          color: HexColor(
+              colorData1[i]['color'].toString().replaceAll(RegExp('#'), '')),
+          selected: false,
+        );
+
+        colorData.add(colData);
+      }
+    });
+  }
+
   Future getImages() async {
     final pickedFile = await picker.pickMultiImage(
         imageQuality: 100, maxHeight: 1000, maxWidth: 1000);
@@ -455,7 +519,7 @@ class HexColor extends Color {
   static int _getColorFromHex(String hexColor) {
     hexColor = hexColor.toUpperCase().replaceAll("#", "");
     if (hexColor.length == 6) {
-      hexColor = "FF" + hexColor;
+      hexColor = "FF$hexColor";
     }
     return int.parse(hexColor, radix: 16);
   }
