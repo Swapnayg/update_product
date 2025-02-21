@@ -227,7 +227,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                                       MainAxisSize.min,
                                                   children: [
                                                     Text(
-                                                      "${colorData[j].name}",
+                                                      "${colorData[j].name}" +
+                                                          " " +
+                                                          "${colorData[j].color_code}",
                                                       textAlign:
                                                           TextAlign.center,
                                                       style: TextStyle(
@@ -409,8 +411,6 @@ class _MyHomePageState extends State<MyHomePage> {
     dynamic brandData1 = jsonDecode(jsonAppData[0]["brand"]);
     dynamic sizeData1 = jsonDecode(jsonAppData[0]["size"]);
     dynamic colorData1 = jsonDecode(jsonAppData[0]["color"]);
-
-    print(sizeData1);
     setState(() {
       for (var i = 0; i < cateData1.length; i++) {
         Category_P catData = Category_P(
@@ -439,12 +439,12 @@ class _MyHomePageState extends State<MyHomePage> {
         );
         sizeData.add(sData);
       }
-      print(sizeData);
       for (var i = 0; i < colorData1.length; i++) {
         Colorway colData = Colorway(
           name: colorData1[i]['name'],
           color: HexColor(
               colorData1[i]['color'].toString().replaceAll(RegExp('#'), '')),
+          color_code: colorData1[i]['color'].toString(),
           selected: false,
         );
 
