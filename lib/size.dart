@@ -1,5 +1,3 @@
-import 'package:flutter/cupertino.dart';
-
 class Size_P {
   String name;
   String number;

@@ -1,7 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +9,10 @@ import 'package:update_product/category.dart';
 import 'package:update_product/colorway.dart';
 import 'package:update_product/brand.dart';
 import 'package:update_product/size.dart';
+import 'package:update_product/imgbbResponseModel.dart';
+import 'package:update_product/admin_login.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
 
 void main() {
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
@@ -36,7 +38,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key? key, required this.title}) : super(key: key);
+  const MyHomePage({super.key, required this.title});
 
   final String title;
 
@@ -49,8 +51,9 @@ final List<Brand_p> brandData = [];
 final List<Size_P> sizeData = [];
 final List<Colorway> colorData = [];
 
-List<File> selectedImages = [];
+List<PlatformFile> selectedImages = [];
 final picker = ImagePicker();
+Dio dio = Dio();
 
 int dropdownvalue = 0;
 
@@ -61,26 +64,23 @@ HashSet selectItems = HashSet();
 HashSet selectSizeItems = HashSet();
 bool isMultiSelectionEnabled = false;
 bool isSizeMultiEnabled = false;
+bool delay = true;
+bool loading = false;
+ImgbbResponseModel? imgbbResponse;
 
-var items = [
-  'Item 1',
-  'Item 2',
-  'Item 3',
-  'Item 4',
-  'Item 5',
-];
-
-var brands = [
-  'brand 1',
-  'brand 2',
-  'brand 3',
-  'brand 4',
-  'brand 5',
-];
-var arry_sizes = [];
-var arry_colors = [];
+HashSet image_urls = HashSet();
 
 class _MyHomePageState extends State<MyHomePage> {
+  final _productname = TextEditingController();
+  final _productdesc = TextEditingController();
+  @override
+  void dispose() {
+    super.dispose();
+    _productname.dispose();
+    _productdesc.dispose();
+  }
+
+  @override
   initState() {
     readJson();
   }
@@ -95,6 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
     var size = MediaQuery.of(context).size;
     int sizeIndex = 0;
     int selSizeIndex = 0;
+
     Color color = Colors.blue;
     final double itemHeight = (size.height - kToolbarHeight - 24) / 2;
     final double itemWidth = size.width / 2;
@@ -114,6 +115,23 @@ class _MyHomePageState extends State<MyHomePage> {
                         subtitle: SizedBox(
                             width: MediaQuery.of(context).size.width * .71,
                             child: TextFormField(
+                              controller: _productname,
+                              autofocus: false,
+                              decoration: InputDecoration(
+                                labelText: '',
+                              ),
+                            ))),
+                    SizedBox(
+                      height: 15,
+                    ),
+                    ListTile(
+                        title: Text('Product Description'),
+                        subtitle: SizedBox(
+                            width: MediaQuery.of(context).size.width * .71,
+                            child: TextFormField(
+                              maxLines: 8,
+                              controller: _productdesc,
+                              autofocus: false,
                               decoration: InputDecoration(
                                 labelText: '',
                               ),
@@ -134,9 +152,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                   .toList()
                                   .map((index) {
                                 return DropdownMenuItem(
+                                  value: index,
                                   child:
                                       Text(categoryData[index].name.toString()),
-                                  value: index,
                                 );
                               }).toList(),
                               onChanged: (int? newValue) {
@@ -158,8 +176,8 @@ class _MyHomePageState extends State<MyHomePage> {
                               items:
                                   brandData.asMap().keys.toList().map((index) {
                                 return DropdownMenuItem(
-                                  child: Text(brandData[index].name.toString()),
                                   value: index,
+                                  child: Text(brandData[index].name.toString()),
                                 );
                               }).toList(),
                               onChanged: (int? newValue) {
@@ -227,9 +245,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                                       MainAxisSize.min,
                                                   children: [
                                                     Text(
-                                                      "${colorData[j].name}" +
-                                                          " " +
-                                                          "${colorData[j].color_code}",
+                                                      "${colorData[j].name} ${colorData[j].color_code}",
                                                       textAlign:
                                                           TextAlign.center,
                                                       style: TextStyle(
@@ -370,12 +386,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                             crossAxisCount: 5),
                                     itemBuilder:
                                         (BuildContext context, int index) {
+                                      final file = selectedImages[index];
                                       return Center(
-                                          child: kIsWeb
-                                              ? Image.network(
-                                                  selectedImages[index].path)
-                                              : Image.file(
-                                                  selectedImages[index]));
+                                          child: Image.memory(file.bytes!));
                                     },
                                   ),
                           ),
@@ -388,11 +401,17 @@ class _MyHomePageState extends State<MyHomePage> {
                     MaterialButton(
                       color: AppColor.secondary,
                       minWidth: 160,
-                      onPressed: () {},
-                      child: Text(
-                        'Add Product',
-                        style: textstyle,
-                      ),
+                      onPressed: loading ? null : startuploading,
+                      child: loading
+                          ? const SizedBox(
+                              height: 30,
+                              width: 30,
+                              child: CircularProgressIndicator(),
+                            )
+                          : Text(
+                              'Add Product',
+                              style: textstyle,
+                            ),
                     ),
                   ],
                 ),
@@ -454,25 +473,28 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future getImages() async {
-    final pickedFile = await picker.pickMultiImage(
-        imageQuality: 100, maxHeight: 1000, maxWidth: 1000);
-    List<XFile> xfilePick = pickedFile;
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowMultiple: true,
+        allowedExtensions: ['jpeg', 'png', 'webp', 'jpg']);
 
     setState(
       () {
-        if (xfilePick.isNotEmpty) {
-          if (xfilePick.length <= 5 &&
-              (selectedImages.length + xfilePick.length) <= 5) {
-            for (var i = 0; i < xfilePick.length; i++) {
-              selectedImages.add(File(xfilePick[i].path));
+        if (result != null) {
+          if (result.files.isNotEmpty) {
+            if (result.files.length <= 5 &&
+                (selectedImages.length + result.files.length) <= 5) {
+              for (var i = 0; i < result.files.length; i++) {
+                selectedImages.add(result.files[i]);
+              }
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Select Only 5 Images')));
             }
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Select Only 5 Images')));
+                const SnackBar(content: Text('Nothing is selected')));
           }
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Nothing is selected')));
         }
       },
     );
@@ -482,6 +504,29 @@ class _MyHomePageState extends State<MyHomePage> {
     return selectItems.isNotEmpty
         ? "${selectItems.length} item selected"
         : "No item selected";
+  }
+
+  Future<void> uploadImageFile(List<PlatformFile> imagesList) async {
+    DateTime now = DateTime.now();
+    for (int j = 0; j < imagesList.length; j++) {
+      FormData formData = FormData.fromMap({
+        "key": "cc4c5920e77b36355db28b10c5f35e17",
+        "image": base64Encode(selectedImages[j].bytes!),
+        "name": "image_" + now.toString() + j.toString()
+      });
+      Response response = await dio.post(
+        "https://api.imgbb.com/1/upload",
+        data: formData,
+      );
+      if (response.statusCode != 400) {
+        imgbbResponse = ImgbbResponseModel.fromJson(response.data);
+        setState(() {
+          image_urls.add(imgbbResponse!.data.displayUrl);
+        });
+      } else {
+        setState(() {});
+      }
+    }
   }
 
   void doMultiSelection(int path) {
@@ -512,6 +557,68 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  startuploading() async {
+    setState(() {
+      loading = true;
+    });
+
+    if (_productname.text.isEmpty == false) {
+      if (_productdesc.text.isEmpty == false) {
+        if (dropdownvalue != 0) {
+          if (brandValue != 0) {
+            if (selectItems.isEmpty == false) {
+              if (selectSizeItems.isEmpty == false) {
+                if (selectedImages.isEmpty == false) {
+                  await uploadImageFile(selectedImages);
+
+                  var data = {
+                    "p_name": _productname.text,
+                    "p_description": _productdesc.text,
+                    "p_category": categoryData[dropdownvalue].name.toString(),
+                    "p_brand": brandData[brandValue].name.toString(),
+                    "p_images": jsonEncode(image_urls.toList()),
+                    "p_sizes": jsonEncode(selectSizeItems.toList()),
+                    "p_colors": jsonEncode(selectItems.toList()),
+                  };
+                  await http
+                      .post(
+                          Uri.parse(
+                              "https://script.google.com/macros/s/AKfycbyVIObDY0oKGcBGVrcrI7vTxqGPC1T0SE08qlaCkuOAWo2colbP7sY7Hact-IQOGZ2L/exec"),
+                          body: (data))
+                      .then((response) async {
+                    if (response.statusCode == 302) {
+                    } else {
+                      loading = true;
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => const AdminLoginPage()));
+                    }
+                  });
+                } else {
+                  _showAlert(context, "Please add images.");
+                }
+              } else {
+                _showAlert(context, "Please select sizes.");
+              }
+            } else {
+              _showAlert(context, "Please select colors.");
+            }
+          } else {
+            _showAlert(context, "Please select brand.");
+          }
+        } else {
+          _showAlert(context, "Please select category.");
+        }
+      } else {
+        _showAlert(context, "Please enter product description.");
+      }
+    } else {
+      _showAlert(context, "Please enter product name.");
+    }
+    setState(() {
+      loading = false;
+    });
+  }
+
   void _updateLocation(PointerEvent details) {}
 }
 
@@ -525,4 +632,13 @@ class HexColor extends Color {
   }
 
   HexColor(final String hexColor) : super(_getColorFromHex(hexColor));
+}
+
+void _showAlert(BuildContext context, text) {
+  showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+            title: Text("Error:"),
+            content: Text(text),
+          ));
 }

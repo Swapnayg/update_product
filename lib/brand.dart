@@ -1,5 +1,3 @@
-import 'package:flutter/cupertino.dart';
-
 class Brand_p {
   String name;
   String logourl;
