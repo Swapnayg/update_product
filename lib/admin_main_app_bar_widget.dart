@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:update_product/app_color.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AdminMainAppBar extends StatefulWidget implements PreferredSizeWidget {
   final int cartValue;
@@ -20,8 +21,21 @@ class AdminMainAppBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _AdminMainAppBarState extends State<AdminMainAppBar> {
+  String a_username = "";
+  @override
+  initState() {
+    sharedPref();
+  }
+
+  Future<void> sharedPref() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      a_username = prefs.getString('a_username').toString();
+    });
+  }
+
   final TextStyle textstyle =
-      TextStyle(color: Colors.white, fontWeight: FontWeight.bold);
+      TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15);
   @override
   Widget build(BuildContext context) {
     return AppBar(
@@ -32,7 +46,7 @@ class _AdminMainAppBarState extends State<AdminMainAppBar> {
       title: Row(
         children: [
           Text(
-            "username",
+            a_username.toUpperCase(),
             textAlign: TextAlign.center,
             style: textstyle,
           ),

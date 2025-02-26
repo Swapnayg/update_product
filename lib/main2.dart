@@ -71,6 +71,7 @@ ImgbbResponseModel? imgbbResponse;
 HashSet image_urls = HashSet();
 
 class _MyHomePageState extends State<MyHomePage> {
+  String l_error_lbl = "";
   final _productname = TextEditingController();
   final _productdesc = TextEditingController();
   @override
@@ -345,6 +346,17 @@ class _MyHomePageState extends State<MyHomePage> {
                                                             FontWeight.bold),
                                                   ))),
                                         ]))),
+                                RichText(
+                                  text: TextSpan(
+                                    style: TextStyle(
+                                      fontSize: 14.0,
+                                      color: Colors.red,
+                                    ),
+                                    children: <TextSpan>[
+                                      TextSpan(text: l_error_lbl)
+                                    ],
+                                  ),
+                                ),
                               ],
                             ],
                           ),
@@ -618,7 +630,11 @@ class _MyHomePageState extends State<MyHomePage> {
                               "https://script.google.com/macros/s/AKfycbwkmTCZqEbhk_GB2yUa5clPPnXDG0zP7OEU3jtVRGBaFELX9B6q1X-EL6PScGbQbOpd/exec"),
                           body: (data))
                       .then((response) async {
-                    if (response.statusCode == 302) {
+                    if (jsonDecode(response.body)['status'] == "Error") {
+                      Navigator.of(context, rootNavigator: true).pop('dialog');
+                      setState(() {
+                        l_error_lbl = "Please try again later.";
+                      });
                     } else {
                       Navigator.of(context).push(MaterialPageRoute(
                           builder: (context) => const AdminLoginPage()));
@@ -666,7 +682,14 @@ void _showAlert(BuildContext context, text) {
   showDialog(
       context: context,
       builder: (context) => AlertDialog(
-            title: Text("Error:"),
+            title: Text(
+              "Error:",
+              style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  fontFamily: 'poppins'),
+            ),
             content: Text(text),
           ));
 }

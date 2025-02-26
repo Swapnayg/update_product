@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:update_product/app_color.dart';
 import 'package:update_product/all_products.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
@@ -15,19 +16,18 @@ class AdminLoginPage extends StatefulWidget {
 }
 
 class _AdminLoginPageState extends State<AdminLoginPage> {
-  final _l_username = TextEditingController();
-  final _l_password = TextEditingController();
+  final _al_username = TextEditingController();
+  final _al_password = TextEditingController();
 
   @override
   void dispose() {
     super.dispose();
-    _l_username.dispose();
-    _l_password.dispose();
+    _al_username.dispose();
+    _al_password.dispose();
   }
 
-  String l_error_lbl = "";
-  String l_lbl_sucess = "";
-  bool _passVisibility = true;
+  String al_error_lbl = "";
+  bool _apassVisibility = true;
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +75,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
               // Section 2 - Form
               // Email
               TextField(
-                controller: _l_username,
+                controller: _al_username,
                 autofocus: false,
                 onChanged: (text) {},
                 decoration: InputDecoration(
@@ -105,9 +105,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
               const SizedBox(height: 16),
               // Password
               TextField(
-                controller: _l_password,
+                controller: _al_password,
                 autofocus: false,
-                obscureText: _passVisibility,
+                obscureText: _apassVisibility,
                 decoration: InputDecoration(
                   hintText: '**********',
                   labelText: 'Please enter password!',
@@ -133,13 +133,13 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                   filled: true,
                   //
                   suffixIcon: IconButton(
-                    icon: _passVisibility
+                    icon: _apassVisibility
                         ? SvgPicture.asset('assets/icons/Hide.svg',
                             color: AppColor.primary)
                         : SvgPicture.asset('assets/icons/Show.svg',
                             color: AppColor.primary),
                     onPressed: () {
-                      _passVisibility = !_passVisibility;
+                      _apassVisibility = !_apassVisibility;
                       setState(() {});
                     },
                   ),
@@ -153,49 +153,49 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     fontSize: 14.0,
                     color: Colors.red,
                   ),
-                  children: <TextSpan>[TextSpan(text: l_error_lbl)],
+                  children: <TextSpan>[TextSpan(text: al_error_lbl)],
                 ),
               ),
 
               // Sign In button
               ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    if (_l_username.text.isNotEmpty &&
-                        _l_password.text.isNotEmpty) {
-                      _adminlogin_fun().then((value) {
-                        var val = value;
-                        Timer(const Duration(seconds: 1), () {
-                          if (val == "sucess") {
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) => const All_ProductPage()));
-                          } else {
-                            setState(() {
-                              l_error_lbl = "Please contact support.";
-                            });
-                          }
-                        });
-                      });
-                    }
-                  });
-                },
                 style: ElevatedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 36, vertical: 18),
                   backgroundColor: AppColor.primary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
                   shadowColor: Colors.transparent,
                 ),
-                child: const Text(
-                  'Sign in',
+                child: Text(
+                  'Sign In',
                   style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 18,
                       fontFamily: 'poppins'),
                 ),
+                onPressed: () async {
+                  al_error_lbl = '';
+                  if (_al_username.text.isNotEmpty &&
+                      _al_password.text.isNotEmpty) {
+                    await _adminlogin_fun().then((value) {
+                      var val = value;
+                      if (val == "sucess") {
+                        Navigator.of(context).push(MaterialPageRoute(
+                            builder: (context) => const All_ProductPage()));
+                      } else {
+                        Navigator.of(context, rootNavigator: true)
+                            .pop('dialog');
+                        setState(() {
+                          al_error_lbl = "Please contact support.";
+                        });
+                      }
+                    });
+                  } else {
+                    _showAlert(context, "Username and password is required.");
+                  }
+                },
               ),
               const SizedBox(height: 16),
             ],
@@ -204,10 +204,16 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   }
 
   Future<String> _adminlogin_fun() async {
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return Center(child: CircularProgressIndicator());
+        });
     var data = {
       "call": "login",
-      "l_name": _l_username.text,
-      "l_password": _l_password.text,
+      "l_name": _al_username.text.trim(),
+      "l_password": _al_password.text.trim(),
     };
     var result = '';
     await http
@@ -216,12 +222,31 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 "https://script.google.com/macros/s/AKfycbwkmTCZqEbhk_GB2yUa5clPPnXDG0zP7OEU3jtVRGBaFELX9B6q1X-EL6PScGbQbOpd/exec"),
             body: (data))
         .then((response) async {
-      if (response.statusCode == 302) {
+      if (jsonDecode(response.body)['status'] == "Error") {
         result = "failed";
       } else {
+        SharedPreferences? prefs = await SharedPreferences.getInstance();
+        prefs.setString("isLoggedIn", "login");
+        prefs.setString("a_username", _al_username.text.trim().toString());
         result = "sucess";
       }
     });
     return result;
   }
+}
+
+void _showAlert(BuildContext context, text) {
+  showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+            title: Text(
+              "Error:",
+              style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  fontFamily: 'poppins'),
+            ),
+            content: Text(text),
+          ));
 }
