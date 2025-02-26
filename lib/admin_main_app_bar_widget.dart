@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:update_product/app_color.dart';
 
 class AdminMainAppBar extends StatefulWidget implements PreferredSizeWidget {
@@ -21,6 +20,8 @@ class AdminMainAppBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _AdminMainAppBarState extends State<AdminMainAppBar> {
+  final TextStyle textstyle =
+      TextStyle(color: Colors.white, fontWeight: FontWeight.bold);
   @override
   Widget build(BuildContext context) {
     return AppBar(
@@ -30,7 +31,11 @@ class _AdminMainAppBarState extends State<AdminMainAppBar> {
       elevation: 0,
       title: Row(
         children: [
-          Text("left"),
+          Text(
+            "username",
+            textAlign: TextAlign.center,
+            style: textstyle,
+          ),
           Expanded(
             child: Align(
               alignment: Alignment.topRight,

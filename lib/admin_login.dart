@@ -1,9 +1,11 @@
 import 'dart:async';
-
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:update_product/app_color.dart';
+import 'package:update_product/all_products.dart';
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
@@ -13,22 +15,18 @@ class AdminLoginPage extends StatefulWidget {
 }
 
 class _AdminLoginPageState extends State<AdminLoginPage> {
-  final _l_email = TextEditingController();
+  final _l_username = TextEditingController();
   final _l_password = TextEditingController();
 
   @override
   void dispose() {
     super.dispose();
-    _l_email.dispose();
+    _l_username.dispose();
     _l_password.dispose();
   }
 
   String l_error_lbl = "";
   String l_lbl_sucess = "";
-
-  bool _validate_l_email = false;
-  bool _validate_l_pass = false;
-  bool _l_email_validate = false;
   bool _passVisibility = true;
 
   @override
@@ -77,14 +75,12 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
               // Section 2 - Form
               // Email
               TextField(
-                controller: _l_email,
+                controller: _l_username,
                 autofocus: false,
                 onChanged: (text) {},
                 decoration: InputDecoration(
-                  hintText: 'youremail@email.com',
-                  labelText: 'Please enter email address!',
-                  errorText:
-                      _validate_l_email ? 'This field is required!' : null,
+                  hintText: '',
+                  labelText: 'Please enter username !',
                   prefixIcon: Container(
                     padding: const EdgeInsets.all(12),
                     child: SvgPicture.asset('assets/icons/Message.svg',
@@ -115,8 +111,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 decoration: InputDecoration(
                   hintText: '**********',
                   labelText: 'Please enter password!',
-                  errorText:
-                      _validate_l_pass ? 'This field is required!' : null,
+
                   prefixIcon: Container(
                     padding: const EdgeInsets.all(12),
                     child: SvgPicture.asset('assets/icons/Lock.svg',
@@ -161,30 +156,26 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                   children: <TextSpan>[TextSpan(text: l_error_lbl)],
                 ),
               ),
-              RichText(
-                text: TextSpan(
-                  style: TextStyle(
-                    fontSize: 14.0,
-                    color: Colors.green,
-                  ),
-                  children: <TextSpan>[TextSpan(text: l_lbl_sucess)],
-                ),
-              ),
+
               // Sign In button
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    _validate_l_email = _l_email.text.isEmpty;
-                    _validate_l_pass = _l_password.text.isEmpty;
-                    if (_l_email.text.isNotEmpty &&
+                    if (_l_username.text.isNotEmpty &&
                         _l_password.text.isNotEmpty) {
-                      if (_l_email_validate) {
-                        l_error_lbl = "";
-                        String errorLVal = '';
-                      } else {
-                        l_lbl_sucess = "";
-                        l_error_lbl = "Please enter valid email address.";
-                      }
+                      _adminlogin_fun().then((value) {
+                        var val = value;
+                        Timer(const Duration(seconds: 1), () {
+                          if (val == "sucess") {
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => const All_ProductPage()));
+                          } else {
+                            setState(() {
+                              l_error_lbl = "Please contact support.";
+                            });
+                          }
+                        });
+                      });
                     }
                   });
                 },
@@ -212,8 +203,25 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         ));
   }
 
-  void clearText() {
-    _l_email.clear();
-    _l_password.clear();
+  Future<String> _adminlogin_fun() async {
+    var data = {
+      "call": "login",
+      "l_name": _l_username.text,
+      "l_password": _l_password.text,
+    };
+    var result = '';
+    await http
+        .post(
+            Uri.parse(
+                "https://script.google.com/macros/s/AKfycbwkmTCZqEbhk_GB2yUa5clPPnXDG0zP7OEU3jtVRGBaFELX9B6q1X-EL6PScGbQbOpd/exec"),
+            body: (data))
+        .then((response) async {
+      if (response.statusCode == 302) {
+        result = "failed";
+      } else {
+        result = "sucess";
+      }
+    });
+    return result;
   }
 }

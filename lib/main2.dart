@@ -399,7 +399,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                                   onPressed: () {
                                                     deleteimage(index);
                                                   },
-                                                  icon: Icon(Icons.delete),
+                                                  icon: Icon(Icons.close),
                                                   color: Colors.red,
                                                 ),
                                               ),
@@ -528,7 +528,7 @@ class _MyHomePageState extends State<MyHomePage> {
       FormData formData = FormData.fromMap({
         "key": "cc4c5920e77b36355db28b10c5f35e17",
         "image": base64Encode(selectedImages[j].bytes!),
-        "name": "image_" + now.toString() + j.toString()
+        "name": "image_$now$j"
       });
       Response response = await dio.post(
         "https://api.imgbb.com/1/upload",
@@ -602,6 +602,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   await uploadImageFile(selectedImages);
 
                   var data = {
+                    "call": "insert",
                     "p_name": _productname.text,
                     "p_description": _productdesc.text,
                     "p_category": categoryData[dropdownvalue].name.toString(),
@@ -609,11 +610,12 @@ class _MyHomePageState extends State<MyHomePage> {
                     "p_images": jsonEncode(image_urls.toList()),
                     "p_sizes": jsonEncode(selectSizeItems.toList()),
                     "p_colors": jsonEncode(selectItems.toList()),
+                    "p_company": "abcd",
                   };
                   await http
                       .post(
                           Uri.parse(
-                              "https://script.google.com/macros/s/AKfycbyVIObDY0oKGcBGVrcrI7vTxqGPC1T0SE08qlaCkuOAWo2colbP7sY7Hact-IQOGZ2L/exec"),
+                              "https://script.google.com/macros/s/AKfycbwkmTCZqEbhk_GB2yUa5clPPnXDG0zP7OEU3jtVRGBaFELX9B6q1X-EL6PScGbQbOpd/exec"),
                           body: (data))
                       .then((response) async {
                     if (response.statusCode == 302) {

@@ -28,7 +28,7 @@ class _Add_ProductPageState extends State<Add_ProductPage> {
 
   bool _validate_l_email = false;
   bool _validate_l_pass = false;
-  bool _l_email_validate = false;
+  final bool _l_email_validate = false;
   bool _passVisibility = true;
 
   @override
