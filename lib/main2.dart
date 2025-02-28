@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -74,11 +73,15 @@ class _MyHomePageState extends State<MyHomePage> {
   String l_error_lbl = "";
   final _productname = TextEditingController();
   final _productdesc = TextEditingController();
+  final _productprice = TextEditingController();
+  final _productqty = TextEditingController();
   @override
   void dispose() {
     super.dispose();
     _productname.dispose();
     _productdesc.dispose();
+    _productprice.dispose();
+    _productqty.dispose();
   }
 
   @override
@@ -117,6 +120,36 @@ class _MyHomePageState extends State<MyHomePage> {
                             width: MediaQuery.of(context).size.width * .71,
                             child: TextFormField(
                               controller: _productname,
+                              autofocus: false,
+                              decoration: InputDecoration(
+                                labelText: '',
+                              ),
+                            ))),
+                    SizedBox(
+                      height: 15,
+                    ),
+                    ListTile(
+                        title: Text('Product Price'),
+                        subtitle: SizedBox(
+                            width: MediaQuery.of(context).size.width * .71,
+                            child: TextFormField(
+                              keyboardType: TextInputType.number,
+                              controller: _productprice,
+                              autofocus: false,
+                              decoration: InputDecoration(
+                                labelText: '',
+                              ),
+                            ))),
+                    SizedBox(
+                      height: 15,
+                    ),
+                    ListTile(
+                        title: Text('Product Price'),
+                        subtitle: SizedBox(
+                            width: MediaQuery.of(context).size.width * .71,
+                            child: TextFormField(
+                              keyboardType: TextInputType.number,
+                              controller: _productqty,
                               autofocus: false,
                               decoration: InputDecoration(
                                 labelText: '',
@@ -473,7 +506,6 @@ class _MyHomePageState extends State<MyHomePage> {
         Brand_p brData = Brand_p(
           name: brandData1[i]['name'].toString(),
           logourl: brandData1[i]['logourl'].toString(),
-          password: brandData1[i]['password'].toString(),
         );
 
         brandData.add(brData);
@@ -599,64 +631,76 @@ class _MyHomePageState extends State<MyHomePage> {
 
   startuploading() async {
     if (_productname.text.isEmpty == false) {
-      if (_productdesc.text.isEmpty == false) {
-        if (dropdownvalue != 0) {
-          if (brandValue != 0) {
-            if (selectItems.isEmpty == false) {
-              if (selectSizeItems.isEmpty == false) {
-                if (selectedImages.isEmpty == false) {
-                  showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) {
-                        return Center(child: CircularProgressIndicator());
-                      });
-                  await uploadImageFile(selectedImages);
+      if (_productprice.text.isEmpty == false) {
+        if (_productqty.text.isEmpty == false) {
+          if (_productdesc.text.isEmpty == false) {
+            if (dropdownvalue != 0) {
+              if (brandValue != 0) {
+                if (selectItems.isEmpty == false) {
+                  if (selectSizeItems.isEmpty == false) {
+                    if (selectedImages.isEmpty == false) {
+                      showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) {
+                            return Center(child: CircularProgressIndicator());
+                          });
+                      await uploadImageFile(selectedImages);
 
-                  var data = {
-                    "call": "insert",
-                    "p_name": _productname.text,
-                    "p_description": _productdesc.text,
-                    "p_category": categoryData[dropdownvalue].name.toString(),
-                    "p_brand": brandData[brandValue].name.toString(),
-                    "p_images": jsonEncode(image_urls.toList()),
-                    "p_sizes": jsonEncode(selectSizeItems.toList()),
-                    "p_colors": jsonEncode(selectItems.toList()),
-                    "p_company": "abcd",
-                  };
-                  await http
-                      .post(
-                          Uri.parse(
-                              "https://script.google.com/macros/s/AKfycbwkmTCZqEbhk_GB2yUa5clPPnXDG0zP7OEU3jtVRGBaFELX9B6q1X-EL6PScGbQbOpd/exec"),
-                          body: (data))
-                      .then((response) async {
-                    if (jsonDecode(response.body)['status'] == "Error") {
-                      Navigator.of(context, rootNavigator: true).pop('dialog');
-                      setState(() {
-                        l_error_lbl = "Please try again later.";
+                      var data = {
+                        "call": "insert",
+                        "p_name": _productname.text,
+                        "p_price": _productprice.text,
+                        "p_qty": _productqty.text,
+                        "p_description": _productdesc.text,
+                        "p_category":
+                            categoryData[dropdownvalue].name.toString(),
+                        "p_brand": brandData[brandValue].name.toString(),
+                        "p_images": jsonEncode(image_urls.toList()),
+                        "p_sizes": jsonEncode(selectSizeItems.toList()),
+                        "p_colors": jsonEncode(selectItems.toList()),
+                        "p_company": "abcd",
+                      };
+                      await http
+                          .post(
+                              Uri.parse(
+                                  "https://script.google.com/macros/s/AKfycbwkmTCZqEbhk_GB2yUa5clPPnXDG0zP7OEU3jtVRGBaFELX9B6q1X-EL6PScGbQbOpd/exec"),
+                              body: (data))
+                          .then((response) async {
+                        if (jsonDecode(response.body)['status'] == "Error") {
+                          Navigator.of(context, rootNavigator: true)
+                              .pop('dialog');
+                          setState(() {
+                            l_error_lbl = "Please try again later.";
+                          });
+                        } else {
+                          Navigator.of(context).push(MaterialPageRoute(
+                              builder: (context) => const AdminLoginPage()));
+                        }
                       });
                     } else {
-                      Navigator.of(context).push(MaterialPageRoute(
-                          builder: (context) => const AdminLoginPage()));
+                      _showAlert(context, "Please add images.");
                     }
-                  });
+                  } else {
+                    _showAlert(context, "Please select sizes.");
+                  }
                 } else {
-                  _showAlert(context, "Please add images.");
+                  _showAlert(context, "Please select colors.");
                 }
               } else {
-                _showAlert(context, "Please select sizes.");
+                _showAlert(context, "Please select brand.");
               }
             } else {
-              _showAlert(context, "Please select colors.");
+              _showAlert(context, "Please select category.");
             }
           } else {
-            _showAlert(context, "Please select brand.");
+            _showAlert(context, "Please enter product description.");
           }
         } else {
-          _showAlert(context, "Please select category.");
+          _showAlert(context, "Please enter product Quantity.");
         }
       } else {
-        _showAlert(context, "Please enter product description.");
+        _showAlert(context, "Please enter product price.");
       }
     } else {
       _showAlert(context, "Please enter product name.");
